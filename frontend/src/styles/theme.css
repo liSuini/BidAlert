@@ -1,0 +1,153 @@
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-card: #1c2128;
+  --border-color: #30363d;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --color-normal: #3fb950;
+  --color-warning: #d29922;
+  --color-overdue: #f85149;
+  --color-completed: #8b949e;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+}
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 24px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app-header h1 {
+  font-size: 20px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.app-header .nav-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.app-header .nav-tab {
+  padding: 8px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.app-header .nav-tab:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.app-header .nav-tab.active {
+  background: #1f6feb;
+  color: #fff;
+}
+
+.app-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.el-table {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
+
+.el-table th.el-table__cell {
+  background: var(--bg-secondary) !important;
+  color: var(--text-secondary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.el-table tr,
+.el-table td.el-table__cell {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell {
+  background: var(--bg-secondary) !important;
+}
+
+.el-dialog {
+  background: var(--bg-secondary) !important;
+}
+
+.el-dialog__title,
+.el-dialog__body {
+  color: var(--text-primary) !important;
+}
+
+.el-input__wrapper,
+.el-select .el-input__wrapper {
+  background: var(--bg-card) !important;
+  box-shadow: 0 0 0 1px var(--border-color) inset !important;
+}
+
+.el-input__inner {
+  color: var(--text-primary) !important;
+}
+
+.el-pagination {
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-badge.normal {
+  background: rgba(63, 185, 80, 0.15);
+  color: var(--color-normal);
+}
+
+.status-badge.warning {
+  background: rgba(210, 153, 34, 0.15);
+  color: var(--color-warning);
+}
+
+.status-badge.overdue {
+  background: rgba(248, 81, 73, 0.15);
+  color: var(--color-overdue);
+}
+
+.status-badge.completed {
+  background: rgba(139, 148, 158, 0.15);
+  color: var(--color-completed);
+}
