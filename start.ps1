@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     BidAlert 一键启动脚本
 .DESCRIPTION
@@ -108,7 +108,9 @@ Write-OK "后端进程已启动 (PID: $($backendJob.Id))"
 
 # 启动前端
 Write-Step "启动前端服务 (Vite :3000)..."
-$frontendJob = Start-Process -FilePath "npm" `
+$npmCmd = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
+if (-not $npmCmd) { $npmCmd = "npm" }
+$frontendJob = Start-Process -FilePath $npmCmd `
     -ArgumentList "run", "dev" `
     -WorkingDirectory $Frontend `
     -WindowStyle Minimized `
@@ -127,16 +129,19 @@ for ($i = 1; $i -le $maxWait; $i++) {
     Start-Sleep -Seconds 1
     if (-not $backendReady) {
         try {
-            $resp = Invoke-RestMethod -Uri "$BackendUrl/" -Method Get -TimeoutSec 2 -ErrorAction Stop
+            $client = New-Object System.Net.WebClient
+            $null = $client.DownloadString("$BackendUrl/")
             $backendReady = $true
             Write-OK "后端服务就绪"
         } catch { }
     }
     if (-not $frontendReady) {
         try {
-            $resp = Invoke-WebRequest -Uri $FrontendUrl -Method Get -TimeoutSec 2 -ErrorAction Stop
-            $frontendReady = $true
-            Write-OK "前端服务就绪"
+            $conn = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction Stop
+            if ($conn) {
+                $frontendReady = $true
+                Write-OK "前端服务就绪"
+            }
         } catch { }
     }
     if ($backendReady -and $frontendReady) { break }
