@@ -1,16 +1,40 @@
 <template>
   <el-dialog :model-value="true" @close="$emit('close')" title="项目详情" width="800px" class="detail-dialog">
     <div v-loading="loading">
-      <!-- 基本信息 -->
+      <!-- 基本信息（可编辑） -->
       <div class="detail-section">
         <div class="section-title">基本信息</div>
-        <div class="info-grid">
-          <div><span class="label">项目名称：</span>{{ detail.name }}</div>
-          <div><span class="label">地市/部门：</span>{{ detail.region || '-' }}</div>
-          <div><span class="label">责任人：</span>{{ detail.responsible_person || '-' }}</div>
-          <div><span class="label">项目金额：</span>{{ detail.amount ? detail.amount + ' 万元' : '-' }}</div>
-          <div><span class="label">投标主体：</span>{{ detail.bid_subject || '-' }}</div>
-          <div><span class="label">状态：</span><StatusBadge :status="detail.status" /></div>
+        <div class="info-form">
+          <div class="form-row">
+            <label>项目名称</label>
+            <el-input v-model="editForm.name" size="small" />
+          </div>
+          <div class="form-grid">
+            <div class="form-row">
+              <label>地市/部门</label>
+              <el-input v-model="editForm.region" size="small" />
+            </div>
+            <div class="form-row">
+              <label>责任人</label>
+              <el-input v-model="editForm.responsible_person" size="small" />
+            </div>
+            <div class="form-row">
+              <label>项目金额(万)</label>
+              <el-input-number v-model="editForm.amount" :min="0" :controls="false" size="small" style="width: 100%" />
+            </div>
+            <div class="form-row">
+              <label>投标主体</label>
+              <el-select v-model="editForm.bid_subject" size="small" style="width: 100%">
+                <el-option label="信产" value="信产" />
+                <el-option label="数智" value="数智" />
+              </el-select>
+            </div>
+          </div>
+          <div class="form-row" style="margin-top: 4px;">
+            <label>状态</label>
+            <div style="padding-top: 4px;"><StatusBadge :status="detail.status" /></div>
+          </div>
+          <el-button type="primary" size="small" @click="saveBasic" style="margin-top: 8px;">保存基本信息</el-button>
         </div>
       </div>
 
@@ -110,6 +134,12 @@ async function loadDetail() {
     detail.value = await projectApi.get(props.projectId)
     remark.value = detail.value.status_remark || ''
     dateFields.forEach(f => { editForm.value[f.key] = detail.value[f.key] || null })
+    // 基本信息字段
+    editForm.value.name = detail.value.name || ''
+    editForm.value.region = detail.value.region || ''
+    editForm.value.responsible_person = detail.value.responsible_person || ''
+    editForm.value.amount = detail.value.amount || null
+    editForm.value.bid_subject = detail.value.bid_subject || ''
   } catch (e) {
     ElMessage.error('加载详情失败')
   } finally {
@@ -121,6 +151,23 @@ async function saveRemark() {
   try {
     await projectApi.updateRemark(props.projectId, remark.value)
     ElMessage.success('情况说明已保存')
+    emit('updated')
+    await loadDetail()
+  } catch (e) {
+    ElMessage.error('保存失败')
+  }
+}
+
+async function saveBasic() {
+  try {
+    await projectApi.update(props.projectId, {
+      name: editForm.value.name || null,
+      region: editForm.value.region || null,
+      responsible_person: editForm.value.responsible_person || null,
+      amount: editForm.value.amount ?? null,
+      bid_subject: editForm.value.bid_subject || null,
+    })
+    ElMessage.success('基本信息已保存')
     emit('updated')
     await loadDetail()
   } catch (e) {
@@ -163,8 +210,12 @@ onMounted(loadDetail)
 <style scoped>
 .detail-section { margin-bottom: 20px; }
 .section-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); }
-.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
-.info-grid .label { color: var(--text-secondary); }
+.info-form { display: flex; flex-direction: column; gap: 10px; }
+.form-row { display: flex; align-items: center; gap: 8px; }
+.form-row label { min-width: 90px; font-size: 13px; color: var(--text-secondary); flex-shrink: 0; }
+.form-row .el-input, .form-row .el-select, .form-row .el-input-number { flex: 1; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+.form-grid .form-row { display: flex; align-items: center; gap: 8px; }
 .timeline { display: flex; gap: 4px; flex-direction: column; }
 .timeline-item { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
 .timeline-stage { width: 80px; font-size: 13px; }
