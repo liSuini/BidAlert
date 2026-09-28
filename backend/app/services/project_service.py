@@ -139,6 +139,17 @@ class ProjectService:
 
     def create(self, data: ProjectCreate) -> Project:
         project = Project(**data.model_dump())
+        from datetime import timedelta
+        # 中标通知书推导
+        if not project.bid_notice_date:
+            if project.publicity_end_date:
+                project.bid_notice_date = project.publicity_end_date + timedelta(days=1)
+            elif project.bid_open_date:
+                project.bid_notice_date = project.bid_open_date + timedelta(days=1)
+        # 合同敲定日期推导
+        if project.contract_start_date and not project.contract_content_settled_date:
+            project.contract_content_settled_date = project.contract_start_date
+            project.contract_content_settled = True
         # 信产项目 ict_digital_date 自动填"不涉及"
         if project.bid_subject == "信产" and not project.ict_digital_date:
             project.ict_digital_date = "不涉及"
@@ -154,9 +165,26 @@ class ProjectService:
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(project, key, value)
-        # 信产项目自动填"不涉及"
+
+        # ---- 推导逻辑（与导入逻辑一致，编辑后自动联动）----
+        from datetime import timedelta
+
+        # 1. 中标通知书获得时间推导
+        if not project.bid_notice_date:
+            if project.publicity_end_date:
+                project.bid_notice_date = project.publicity_end_date + timedelta(days=1)
+            elif project.bid_open_date:
+                project.bid_notice_date = project.bid_open_date + timedelta(days=1)
+
+        # 2. 合同内容敲定日期推导：合同发起时间已填 → 敲定日 = 合同发起日
+        if project.contract_start_date and not project.contract_content_settled_date:
+            project.contract_content_settled_date = project.contract_start_date
+            project.contract_content_settled = True
+
+        # 3. 投标主体为信产时自动填"不涉及"
         if project.bid_subject == "信产" and not project.ict_digital_date:
             project.ict_digital_date = "不涉及"
+
         self.db.commit()
         self.db.refresh(project)
         return project
