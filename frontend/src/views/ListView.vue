@@ -22,7 +22,12 @@
     <!-- 表格 -->
     <el-table :data="tableData" style="width: 100%" v-loading="loading" @row-dblclick="openDetail" @selection-change="onSelectionChange">
       <el-table-column type="selection" width="45" />
-      <el-table-column prop="name" label="项目名称" min-width="200" show-overflow-tooltip />
+      <el-table-column prop="name" label="项目名称" min-width="200" show-overflow-tooltip>
+        <template #default="{ row }">
+          {{ row.name }}
+          <el-tag v-if="!row.remark_updated" type="warning" size="small" effect="dark" style="margin-left: 4px;">未更新</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="region" label="地市" width="100" />
       <el-table-column prop="amount" label="金额(万)" width="100" sortable />
       <el-table-column prop="bid_subject" label="投标主体" width="100" />

@@ -43,7 +43,12 @@
     <!-- 状态项目列表弹窗 -->
     <el-dialog v-model="statusDialogVisible" :title="statusDialogTitle" width="850px" class="status-dialog">
       <el-table :data="statusDialogData" style="width: 100%" @row-dblclick="openDetail" v-loading="statusDialogLoading" max-height="450">
-        <el-table-column prop="name" label="项目名称" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="name" label="项目名称" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.name }}
+            <el-tag v-if="!row.remark_updated" type="warning" size="small" effect="dark" style="margin-left: 4px;">未更新</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="region" label="地市" width="90" />
         <el-table-column prop="amount" label="金额(万)" width="90" sortable />
         <el-table-column prop="current_stage" label="当前阶段" width="90" />

@@ -29,6 +29,11 @@ class ProjectService:
 
     def _to_dto(self, project: Project) -> ProjectDTO:
         status = self._calc(project)
+        # 判断情况说明是否今日已更新
+        remark_updated = False
+        if project.remark_updated_at:
+            from datetime import date as _date
+            remark_updated = project.remark_updated_at.date() == _date.today()
         return ProjectDTO(
             id=project.id,
             name=project.name,
@@ -46,10 +51,15 @@ class ProjectService:
             total_days_used=status.total_days_used,
             total_days_limit=status.total_days_limit,
             total_days_remaining=status.total_days_remaining,
+            remark_updated=remark_updated,
         )
 
     def _to_detail_dto(self, project: Project) -> ProjectDetailDTO:
         status = self._calc(project)
+        remark_updated = False
+        if project.remark_updated_at:
+            from datetime import date as _date
+            remark_updated = project.remark_updated_at.date() == _date.today()
         dto = ProjectDetailDTO(
             id=project.id,
             name=project.name,
@@ -67,6 +77,7 @@ class ProjectService:
             total_days_used=status.total_days_used,
             total_days_limit=status.total_days_limit,
             total_days_remaining=status.total_days_remaining,
+            remark_updated=remark_updated,
             bid_open_date=project.bid_open_date,
             publicity_end_date=project.publicity_end_date,
             bid_notice_date=project.bid_notice_date,
@@ -206,6 +217,8 @@ class ProjectService:
         if project is None:
             return None
         project.status_remark = remark
+        from datetime import datetime
+        project.remark_updated_at = datetime.now()
         self.db.commit()
         self.db.refresh(project)
         return project

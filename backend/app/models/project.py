@@ -41,6 +41,7 @@ class Project(Base):
 
     # 进展记录
     status_remark = Column(Text, comment="情况说明")
+    remark_updated_at = Column(DateTime, comment="情况说明最后更新时间")
 
     # 元数据
     created_at = Column(DateTime, default=datetime.now)

@@ -97,6 +97,7 @@ class ProjectDTO(BaseModel):
     total_days_used: int = 0
     total_days_limit: int = 0
     total_days_remaining: int = 0
+    remark_updated: bool = False  # 情况说明今日已更新
 
 
 class ProjectDetailDTO(ProjectDTO):
