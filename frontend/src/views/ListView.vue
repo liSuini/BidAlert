@@ -14,10 +14,14 @@
       </el-select>
       <el-button type="primary" @click="loadData">查询</el-button>
       <el-button @click="exportData">导出Excel</el-button>
+      <el-button type="danger" :disabled="selection.length === 0" @click="batchDelete">
+        批量删除{{ selection.length > 0 ? `(${selection.length})` : '' }}
+      </el-button>
     </div>
 
     <!-- 表格 -->
-    <el-table :data="tableData" style="width: 100%" v-loading="loading" @row-dblclick="openDetail">
+    <el-table :data="tableData" style="width: 100%" v-loading="loading" @row-dblclick="openDetail" @selection-change="onSelectionChange">
+      <el-table-column type="selection" width="45" />
       <el-table-column prop="name" label="项目名称" min-width="200" show-overflow-tooltip />
       <el-table-column prop="region" label="地市" width="100" />
       <el-table-column prop="amount" label="金额(万)" width="100" sortable />
@@ -75,6 +79,11 @@ const filterStage = ref('')
 const filterStatus = ref('')
 const detailVisible = ref(false)
 const detailId = ref(null)
+const selection = ref([])
+
+function onSelectionChange(rows) {
+  selection.value = rows
+}
 
 const stageOptions = ['合同敲定', '合同审批', '业务解构', '合同解析', 'ICT立项', '已完成']
 
@@ -137,6 +146,31 @@ async function deleteProject(row) {
     loadData()
   } catch (e) {
     if (e !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+async function batchDelete() {
+  const count = selection.value.length
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${count} 个项目吗？此操作不可恢复。`,
+      '批量删除确认',
+      { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
+    )
+    let ok = 0, fail = 0
+    for (const row of selection.value) {
+      try {
+        await projectApi.delete(row.id)
+        ok++
+      } catch {
+        fail++
+      }
+    }
+    ElMessage.success(`删除完成：成功 ${ok} 条${fail > 0 ? `，失败 ${fail} 条` : ''}`)
+    selection.value = []
+    loadData()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('批量删除失败')
   }
 }
 
