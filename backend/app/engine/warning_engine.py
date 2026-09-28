@@ -147,25 +147,30 @@ def calculate(project, stage_configs: list) -> ProjectStatus:
 
         if end_date is None:
             # 当前阶段（已开始未完成）
+            # 只取第一个此类阶段作为当前阶段，后续阶段视为待开始
             all_stages_completed = False
-            current_stage_name = config.stage_name
-            days_in_current = working_days(start_date, today())
-            days_remaining_current = limit - days_in_current
+            if not current_stage_name:
+                current_stage_name = config.stage_name
+                days_in_current = working_days(start_date, today())
+                days_remaining_current = limit - days_in_current
 
-            stage_status = "normal"
-            if days_in_current > limit:
-                has_overdue_stage = True
-                overdue_stage_name = config.stage_name
-                stage_status = "overdue"
-            elif days_in_current >= limit * config.warning_threshold:
-                has_warning_stage = True
-                stage_status = "warning"
+                stage_status = "normal"
+                if days_in_current > limit:
+                    has_overdue_stage = True
+                    overdue_stage_name = config.stage_name
+                    stage_status = "overdue"
+                elif days_in_current >= limit * config.warning_threshold:
+                    has_warning_stage = True
+                    stage_status = "warning"
+            else:
+                # 前一个阶段仍在进行中，此阶段实际未开始
+                stage_status = "pending"
 
             timeline.append(StageTimelineItem(
                 stage=config.stage_name,
-                start=start_date.isoformat(),
+                start=start_date.isoformat() if not current_stage_name or current_stage_name != config.stage_name else start_date.isoformat(),
                 end=None,
-                days_used=days_in_current,
+                days_used=days_in_current if current_stage_name == config.stage_name else 0,
                 limit=limit,
                 status=stage_status,
             ))

@@ -258,6 +258,23 @@ class ExcelService:
                 if project_data.get("bid_subject") == "信产" and not project_data.get("ict_digital_date"):
                     project_data["ict_digital_date"] = "不涉及"
 
+                # 合同内容已敲定但无敲定日期时，用合同发起时间作为敲定日期
+                # （合同发起的前提是内容已敲定，所以发起日 ≈ 敲定日）
+                if project_data.get("contract_content_settled") and not project_data.get("contract_content_settled_date"):
+                    project_data["contract_content_settled_date"] = project_data.get("contract_start_date")
+
+                # 合同发起时间已填，说明合同内容必然已敲定（没有敲定就无法发起）
+                if project_data.get("contract_start_date") and not project_data.get("contract_content_settled_date"):
+                    project_data["contract_content_settled_date"] = project_data.get("contract_start_date")
+                    project_data["contract_content_settled"] = True
+
+                # 如果没有中标通知书日期，但公示期结束时间存在，用公示期结束次日作为中标通知书日期
+                # （Excel表头说明：不填写视为开标当天或公示期结束第二天获得）
+                if not project_data.get("bid_notice_date"):
+                    pub_end = project_data.get("publicity_end_date")
+                    if pub_end:
+                        project_data["bid_notice_date"] = pub_end
+
                 project = Project(**project_data)
                 self.db.add(project)
                 existing_names.add(name)
