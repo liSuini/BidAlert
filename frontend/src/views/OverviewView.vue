@@ -47,12 +47,24 @@
         <el-table-column prop="region" label="地市" width="90" />
         <el-table-column prop="amount" label="金额(万)" width="90" sortable />
         <el-table-column prop="current_stage" label="当前阶段" width="90" />
-        <el-table-column label="已用/剩余" width="100">
+        <el-table-column prop="days_in_stage" label="已用天数" width="80" sortable />
+        <el-table-column label="剩余天数" width="80" sortable>
           <template #default="{ row }">
-            <span :style="{ color: row.days_remaining < 0 ? 'var(--color-overdue)' : '' }">{{ row.days_in_stage }}/{{ row.days_remaining }}</span>
+            <span :style="{
+              color: row.days_remaining < 0 ? 'var(--color-overdue)' : (row.stage_warning ? '#e8932b' : ''),
+              fontWeight: row.days_remaining < 0 || row.stage_warning ? '600' : 'normal',
+            }">{{ row.days_remaining }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="total_days_used" label="总已用" width="70" sortable />
+        <el-table-column label="总超时天数" width="90" sortable :sort-method="(a,b) => (a.total_days_used - a.total_days_limit) - (b.total_days_used - b.total_days_limit)">
+          <template #default="{ row }">
+            <span v-if="(row.total_days_used - row.total_days_limit) > 0" style="color: var(--color-overdue); font-weight: 600;">
+              {{ row.total_days_used - row.total_days_limit }}
+            </span>
+            <span v-else style="color: var(--text-secondary);">-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="80">
           <template #default="{ row }">
             <el-button size="small" link @click="openDetail(row.id)">查看</el-button>
