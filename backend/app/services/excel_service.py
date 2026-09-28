@@ -268,12 +268,22 @@ class ExcelService:
                     project_data["contract_content_settled_date"] = project_data.get("contract_start_date")
                     project_data["contract_content_settled"] = True
 
-                # 如果没有中标通知书日期，但公示期结束时间存在，用公示期结束次日作为中标通知书日期
-                # （Excel表头说明：不填写视为开标当天或公示期结束第二天获得）
+                # 中标通知书获得时间推导：
+                # 1. 有中标通知书日期 → 用该日期
+                # 2. 无中标通知书但有公示期结束 → 公示期结束次日
+                # 3. 都没有但有开标时间 → 开标次日
+                from datetime import timedelta as _td
                 if not project_data.get("bid_notice_date"):
                     pub_end = project_data.get("publicity_end_date")
                     if pub_end:
-                        project_data["bid_notice_date"] = pub_end
+                        project_data["bid_notice_date"] = pub_end + _td(days=1)
+                    elif not project_data.get("bid_open_date"):
+                        # 都没有，跳过
+                        pass
+                    else:
+                        open_date = project_data.get("bid_open_date")
+                        if isinstance(open_date, date):
+                            project_data["bid_notice_date"] = open_date + _td(days=1)
 
                 project = Project(**project_data)
                 self.db.add(project)

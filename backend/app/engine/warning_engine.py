@@ -97,12 +97,25 @@ def _get_end_date(project, config):
 
 
 def _get_start_date(project, config):
-    """获取阶段开始日期"""
+    """获取阶段开始日期
+
+    特殊处理：阶段1（合同敲定）的起始字段是 bid_notice_date，
+    若为空则推导：公示期结束次日 → 开标次日
+    """
     val = getattr(project, config.start_field, None)
-    if val is None:
+    if val is not None:
+        if isinstance(val, date):
+            return val
         return None
-    if isinstance(val, date):
-        return val
+
+    # bid_notice_date 为空时推导
+    if config.start_field == "bid_notice_date":
+        from datetime import timedelta as _td
+        if project.publicity_end_date:
+            return project.publicity_end_date + _td(days=1)
+        if project.bid_open_date:
+            return project.bid_open_date + _td(days=1)
+
     return None
 
 
@@ -211,9 +224,21 @@ def calculate(project, stage_configs: list) -> ProjectStatus:
             ))
 
     # ---- 总时长检查 ----
+    # 中标通知书获得时间推导逻辑（同导入逻辑）：
+    # 1. 有中标通知书日期 → 用该日期
+    # 2. 无中标通知书但有公示期结束 → 公示期结束次日
+    # 3. 都没有但有开标时间 → 开标次日
+    from datetime import timedelta as _td
+    bid_notice = project.bid_notice_date
+    if bid_notice is None:
+        if project.publicity_end_date:
+            bid_notice = project.publicity_end_date + _td(days=1)
+        elif project.bid_open_date:
+            bid_notice = project.bid_open_date + _td(days=1)
+
     total_days_used = 0
-    if project.bid_notice_date:
-        total_days_used = working_days(project.bid_notice_date, today())
+    if bid_notice:
+        total_days_used = working_days(bid_notice, today())
     total_overdue = total_days_used > total_limit
 
     # ---- 状态合成 ----
