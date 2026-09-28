@@ -197,8 +197,8 @@ function renderRegionChart(regions) {
   regionChart.setOption({
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     legend: { data: ['正常', '预警', '超期'], textStyle: { color: '#8b949e' }, bottom: 0 },
-    grid: { left: '3%', right: '4%', bottom: '15%', top: '5%', containLabel: true },
-    xAxis: { type: 'category', data: regions.map(r => r.region), axisLabel: { color: '#8b949e' } },
+    grid: { left: '3%', right: '4%', bottom: '20%', top: '5%', containLabel: true },
+    xAxis: { type: 'category', data: regions.map(r => r.region), axisLabel: { color: '#8b949e', rotate: 35, interval: 0, fontSize: 12 } },
     yAxis: { type: 'value', axisLabel: { color: '#8b949e' } },
     series: [
       { name: '正常', type: 'bar', stack: 'total', data: regions.map(r => r.normal), itemStyle: { color: statusColors.normal } },
