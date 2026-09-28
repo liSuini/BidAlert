@@ -15,35 +15,39 @@ from app.services.project_service import ProjectService
 from app.schemas.excel import ImportResult, ExportQuery
 from app.schemas.project import ProjectDTO
 
-# Excel 列名 → 系统字段名 映射
-FIELD_MAP = {
-    "项目名称": "name",
-    "地市/部门": "region",
-    "地市": "region",
-    "责任人": "responsible_person",
-    "项目金额（万元）": "amount",
-    "项目金额": "amount",
-    "金额": "amount",
-    "投标主体": "bid_subject",
-    "开标时间": "bid_open_date",
-    "公示期结束时间": "publicity_end_date",
-    "中标通知书获得时间": "bid_notice_date",
-    "是否召开方案评审会": "has_plan_review",
-    "是否BPM方案解构": "has_bpm_analysis",
-    "是否召开标前评审会": "has_pre_bid_review",
-    "是否召开业财评审会": "has_business_review",
-    "中标服务费打出时间": "service_fee_date",
-    "是否敲定合同内容": "contract_content_settled",
-    "信产OA立项时间": "contract_draft_date",
-    "合同发起时间": "contract_start_date",
-    "合同完成审批时间": "contract_approved_date",
-    "完成签约时间": "contract_signed_date",
-    "合同归档时间": "contract_filed_date",
-    "业务解构完成时间": "biz_analysis_date",
-    "合同解析完成时间": "contract_parse_date",
-    "省内ICT协议级立项完成时间": "ict_provincial_date",
-    "数智集团ICT协议级立项完成时间": "ict_digital_date",
-}
+# 关键词 → 系统字段名 映射（按优先级排序，匹配时用 contains 逻辑）
+# 列头包含关键词即匹配，解决换行符、附加说明文字导致精确匹配失败的问题
+KEYWORD_MAP = [
+    ("项目名称", "name"),
+    ("地市", "region"),
+    ("联系", "responsible_person"),   # "联系人" / "责任人"
+    ("责任人", "responsible_person"),
+    ("项目金额", "amount"),            # 匹配 "项目金额（万元）" 或 "项目金额\n（万元）"
+    ("金额", "amount"),
+    ("投标主体", "bid_subject"),
+    ("开标时间", "bid_open_date"),
+    ("公示期", "publicity_end_date"),  # 匹配含说明文字的多行列头
+    ("中标通知书", "bid_notice_date"),  # 匹配含说明文字的多行列头
+    ("中标服务费", "service_fee_date"),
+    ("方案评审", "has_plan_review"),
+    ("BPM", "has_bpm_analysis"),
+    ("标前评审", "has_pre_bid_review"),
+    ("业财评审", "has_business_review"),
+    ("敲定合同", "contract_content_settled"),
+    ("信产OA", "contract_draft_date"),
+    ("合同发起", "contract_start_date"),
+    ("合同完成审批", "contract_approved_date"),
+    ("完成签约", "contract_signed_date"),
+    ("合同归档", "contract_filed_date"),
+    ("业务解构", "biz_analysis_date"),
+    ("合同解析", "contract_parse_date"),
+    ("省内ICT", "ict_provincial_date"),
+    ("数智集团ICT", "ict_digital_date"),
+    ("数智ICT", "ict_digital_date"),
+]
+
+# 情况说明关键词：列头含"情况说明"的列，取最后一个非空值
+REMARK_KEYWORD = "情况说明"
 
 # 系统字段名 → Excel 列名（导出用，含计算字段）
 EXPORT_FIELD_MAP = {
@@ -110,9 +114,20 @@ def _parse_date(val):
     if isinstance(val, date):
         return val
     if isinstance(val, str):
-        for fmt in ["%Y-%m-%d", "%Y/%m/%d", "%Y年%m月%d日", "%m/%d/%Y"]:
+        s = val.strip()
+        # 支持 "M.D" 或 "MM.DD" 格式（如 "8.31"），补全年份为当前年
+        if "." in s and "/" not in s and "-" not in s and "年" not in s:
+            parts = s.split(".")
+            if len(parts) == 2:
+                try:
+                    m, d = int(parts[0]), int(parts[1])
+                    from datetime import date as _date
+                    return _date(date.today().year, m, d)
+                except (ValueError, IndexError):
+                    pass
+        for fmt in ["%Y-%m-%d", "%Y/%m/%d", "%Y年%m月%d日", "%m/%d/%Y", "%Y-%-m-%-d"]:
             try:
-                return datetime.strptime(val.strip(), fmt).date()
+                return datetime.strptime(s, fmt).date()
             except ValueError:
                 continue
     return None
@@ -154,15 +169,30 @@ class ExcelService:
         wb = load_workbook(io.BytesIO(file_content), data_only=True)
         ws = wb.active
 
-        # 读取表头，建立列映射
+        # 读取表头，建立列映射（关键词模糊匹配）
         headers = []
         for cell in next(ws.iter_rows(min_row=1, max_row=1)):
-            headers.append(str(cell.value).strip() if cell.value else "")
+            raw = str(cell.value).strip() if cell.value else ""
+            # 去除换行符，合并空白
+            cleaned = " ".join(raw.split())
+            headers.append(cleaned)
 
-        col_map = {}  # col_index → field_name
+        col_map = {}        # col_index → field_name（常规字段）
+        remark_cols = []    # 情况说明列的 index 列表（按列顺序）
+        used_fields = set()
         for i, header in enumerate(headers):
-            if header in FIELD_MAP:
-                col_map[i] = FIELD_MAP[header]
+            if not header:
+                continue
+            # 情况说明列单独收集
+            if REMARK_KEYWORD in header:
+                remark_cols.append(i)
+                continue
+            # 关键词匹配：找到第一个含关键词的映射
+            for kw, field in KEYWORD_MAP:
+                if kw in header and field not in used_fields:
+                    col_map[i] = field
+                    used_fields.add(field)
+                    break
 
         if not col_map:
             return ImportResult(total=0, success=0, failed=0,
@@ -180,6 +210,15 @@ class ExcelService:
             for col_idx, field_name in col_map.items():
                 val = row[col_idx] if col_idx < len(row) else None
                 row_data[field_name] = val
+
+            # 情况说明：取最后一个非空列的值
+            remark_val = None
+            for rc in remark_cols:
+                v = row[rc] if rc < len(row) else None
+                if v is not None and str(v).strip():
+                    remark_val = str(v).strip()
+            if remark_val:
+                row_data["status_remark"] = remark_val
 
             # 校验必填
             if not row_data.get("name"):
