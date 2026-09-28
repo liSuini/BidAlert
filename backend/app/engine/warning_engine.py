@@ -242,6 +242,10 @@ def calculate(project, stage_configs: list) -> ProjectStatus:
     total_overdue = total_days_used > total_limit
 
     # ---- 状态合成 ----
+    # 规则：
+    #   - 总时长超期 → OVERDUE（无论是否有阶段超期）
+    #   - 仅阶段超期但总时长未超 → NORMAL（剩余天数为负，前端红色区分）
+    #   - 阶段预警但未超期 → WARNING
     if all_stages_completed:
         return ProjectStatus(
             status=Status.COMPLETED,
@@ -251,16 +255,11 @@ def calculate(project, stage_configs: list) -> ProjectStatus:
             stage_timeline=timeline,
         )
 
-    if has_overdue_stage and total_overdue:
-        overdue_type = OverdueType.BOTH
-    elif has_overdue_stage:
-        overdue_type = OverdueType.STAGE_OVERDUE
-    elif total_overdue:
-        overdue_type = OverdueType.TOTAL_OVERDUE
-    else:
-        overdue_type = OverdueType.NONE
-
-    if has_overdue_stage or total_overdue:
+    if total_overdue:
+        if has_overdue_stage:
+            overdue_type = OverdueType.BOTH
+        else:
+            overdue_type = OverdueType.TOTAL_OVERDUE
         return ProjectStatus(
             status=Status.OVERDUE,
             overdue_type=overdue_type,
@@ -269,7 +268,7 @@ def calculate(project, stage_configs: list) -> ProjectStatus:
             days_remaining=days_remaining_current,
             total_days_used=total_days_used,
             total_days_limit=total_limit,
-            current_stage=current_stage_name or overdue_stage_name or "",
+            current_stage=current_stage_name or "",
             stage_timeline=timeline,
         )
 
