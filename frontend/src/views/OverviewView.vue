@@ -70,10 +70,9 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
-import { statsApi, projectApi } from '../api/stats'
-import { projectApi as projectApi2 } from '../api/projects'
+import { statsApi } from '../api/stats'
+import { projectApi } from '../api/projects'
 import MetricCard from '../components/MetricCard.vue'
-import StatusBadge from '../components/StatusBadge.vue'
 import ProjectDetail from '../components/ProjectDetail.vue'
 
 const loading = ref(false)
@@ -107,7 +106,7 @@ async function openProjectsByStatus(status) {
   statusDialogTitle.value = `${statusLabels[status]}项目 (${stats.value[status]}个)`
   statusDialogLoading.value = true
   try {
-    const res = await projectApi2.list({ page: 1, size: 100, status })
+    const res = await projectApi.list({ page: 1, size: 100, status })
     statusDialogData.value = res.items
   } catch (e) {
     ElMessage.error('加载项目列表失败')
