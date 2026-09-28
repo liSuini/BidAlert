@@ -34,6 +34,14 @@
         </template>
       </el-table-column>
       <el-table-column prop="total_days_used" label="总已用" width="80" sortable />
+      <el-table-column label="总超时天数" width="100" sortable :sort-method="(a,b) => (a.total_days_used - a.total_days_limit) - (b.total_days_used - b.total_days_limit)">
+        <template #default="{ row }">
+          <span v-if="(row.total_days_used - row.total_days_limit) > 0" style="color: var(--color-overdue); font-weight: 600;">
+            {{ row.total_days_used - row.total_days_limit }}
+          </span>
+          <span v-else style="color: var(--text-secondary);">-</span>
+        </template>
+      </el-table-column>
       <el-table-column label="状态" width="80">
         <template #default="{ row }">
           <StatusBadge :status="row.status" />
