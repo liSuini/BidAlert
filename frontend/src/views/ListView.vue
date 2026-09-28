@@ -85,7 +85,7 @@ function onSelectionChange(rows) {
   selection.value = rows
 }
 
-const stageOptions = ['合同敲定', '合同审批', '业务解构', '合同解析', 'ICT立项', '已完成']
+const stageOptions = ['合同敲定', '合同审批', '待签约', '已签约待归档', '业务解构', '合同解析', 'ICT立项', '已完成']
 
 async function loadData() {
   loading.value = true

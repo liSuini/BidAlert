@@ -42,7 +42,8 @@ import ProjectDetail from '../components/ProjectDetail.vue'
 const loading = ref(false)
 const projects = ref([])
 const stages = ref([
-  { name: '合同敲定' }, { name: '合同审批' }, { name: '业务解构' },
+  { name: '合同敲定' }, { name: '合同审批' }, { name: '待签约' },
+  { name: '已签约待归档' }, { name: '业务解构' },
   { name: '合同解析' }, { name: 'ICT立项' },
 ])
 const detailVisible = ref(false)
