@@ -109,6 +109,12 @@ def _get_start_date(project, config):
 def calculate(project, stage_configs: list) -> ProjectStatus:
     """计算项目状态
 
+    核心逻辑：
+    - 已完成阶段（有结束日期）不再判定超期
+    - 已被后续阶段超越的阶段（有开始日期但无结束日期，且后面阶段已开始）视为已完成
+    - 只对当前进行中的阶段（最后一个有开始日期但无结束日期的阶段）判定预警/超期
+    - 总时长仍然检查
+
     Args:
         project: Project ORM 对象
         stage_configs: StageConfig 列表
@@ -118,89 +124,99 @@ def calculate(project, stage_configs: list) -> ProjectStatus:
     """
     total_limit = _get_total_limit(project.amount or 0)
 
+    # ---- 第一轮：收集各阶段日期信息 ----
+    stage_data = []
+    for i, config in enumerate(stage_configs):
+        start_date = _get_start_date(project, config)
+        end_date = _get_end_date(project, config)
+        limit = _get_stage_limit(config, project.amount or 0)
+        stage_data.append({
+            "config": config,
+            "start_date": start_date,
+            "end_date": end_date,
+            "limit": limit,
+        })
+
+    # ---- 确定当前阶段：最后一个"有开始日期但无结束日期"的阶段 ----
+    current_stage_idx = -1
+    for i, sd in enumerate(stage_data):
+        if sd["start_date"] is not None and sd["end_date"] is None:
+            current_stage_idx = i  # 持续更新到最后一个
+
     has_overdue_stage = False
     has_warning_stage = False
     overdue_stage_name = None
-    all_stages_completed = True
+    all_stages_completed = (current_stage_idx == -1)
     current_stage_name = ""
     days_in_current = 0
     days_remaining_current = 0
     timeline: List[StageTimelineItem] = []
 
-    for config in stage_configs:
-        start_date = _get_start_date(project, config)
-        end_date = _get_end_date(project, config)
-        limit = _get_stage_limit(config, project.amount or 0)
+    # ---- 第二轮：构建时间线 + 判定状态 ----
+    for i, sd in enumerate(stage_data):
+        config = sd["config"]
+        start_date = sd["start_date"]
+        end_date = sd["end_date"]
+        limit = sd["limit"]
 
         if start_date is None:
             # 阶段未开始
             all_stages_completed = False
-            if not current_stage_name:
+            if not current_stage_name and current_stage_idx == -1:
                 current_stage_name = config.stage_name
             timeline.append(StageTimelineItem(
-                stage=config.stage_name,
-                start=None, end=None,
-                days_used=0, limit=limit,
-                status="pending",
+                stage=config.stage_name, start=None, end=None,
+                days_used=0, limit=limit, status="pending",
             ))
             continue
 
-        if end_date is None:
-            # 当前阶段（已开始未完成）
-            # 只取第一个此类阶段作为当前阶段，后续阶段视为待开始
+        if end_date is not None:
+            # 已完成阶段 — 记录天数，不判定超期
+            days_used = working_days(start_date, end_date)
+            timeline.append(StageTimelineItem(
+                stage=config.stage_name,
+                start=start_date.isoformat(), end=end_date.isoformat(),
+                days_used=days_used, limit=limit, status="completed",
+            ))
+            continue
+
+        # 有开始日期但无结束日期
+        if i == current_stage_idx:
+            # 当前进行中的阶段 — 判定预警/超期
             all_stages_completed = False
-            if not current_stage_name:
-                current_stage_name = config.stage_name
-                days_in_current = working_days(start_date, today())
-                days_remaining_current = limit - days_in_current
+            current_stage_name = config.stage_name
+            days_in_current = working_days(start_date, today())
+            days_remaining_current = limit - days_in_current
 
-                stage_status = "normal"
-                if days_in_current > limit:
-                    has_overdue_stage = True
-                    overdue_stage_name = config.stage_name
-                    stage_status = "overdue"
-                elif days_in_current >= limit * config.warning_threshold:
-                    has_warning_stage = True
-                    stage_status = "warning"
-            else:
-                # 前一个阶段仍在进行中，此阶段实际未开始
-                stage_status = "pending"
+            stage_status = "normal"
+            if days_in_current > limit:
+                has_overdue_stage = True
+                overdue_stage_name = config.stage_name
+                stage_status = "overdue"
+            elif days_in_current >= limit * config.warning_threshold:
+                has_warning_stage = True
+                stage_status = "warning"
 
             timeline.append(StageTimelineItem(
                 stage=config.stage_name,
-                start=start_date.isoformat() if not current_stage_name or current_stage_name != config.stage_name else start_date.isoformat(),
-                end=None,
-                days_used=days_in_current if current_stage_name == config.stage_name else 0,
-                limit=limit,
-                status=stage_status,
+                start=start_date.isoformat(), end=None,
+                days_used=days_in_current, limit=limit, status=stage_status,
             ))
-            continue
+        else:
+            # 被后续阶段超越 — 视为已完成，不判定超期
+            timeline.append(StageTimelineItem(
+                stage=config.stage_name,
+                start=start_date.isoformat(), end=None,
+                days_used=0, limit=limit, status="completed",
+            ))
 
-        # 已完成阶段
-        days_used = working_days(start_date, end_date)
-        stage_status = "completed"
-        if days_used > limit:
-            has_overdue_stage = True
-            if not overdue_stage_name:
-                overdue_stage_name = config.stage_name
-            stage_status = "overdue"
-
-        timeline.append(StageTimelineItem(
-            stage=config.stage_name,
-            start=start_date.isoformat(),
-            end=end_date.isoformat(),
-            days_used=days_used,
-            limit=limit,
-            status=stage_status,
-        ))
-
-    # 总时长检查
+    # ---- 总时长检查 ----
     total_days_used = 0
     if project.bid_notice_date:
         total_days_used = working_days(project.bid_notice_date, today())
     total_overdue = total_days_used > total_limit
 
-    # 状态合成
+    # ---- 状态合成 ----
     if all_stages_completed:
         return ProjectStatus(
             status=Status.COMPLETED,
