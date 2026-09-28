@@ -340,12 +340,38 @@ class ExcelService:
         return buf.getvalue()
 
     def get_template(self) -> bytes:
-        """生成导入模板"""
+        """生成导入模板（表头与「中标未签约项目进展.xlsx」一致）"""
         wb = Workbook()
         ws = wb.active
         ws.title = "项目导入模板"
 
-        headers = list(FIELD_MAP.keys())
+        # 表头完全参照实际工作表结构（含多行列头说明文字）
+        headers = [
+            "项目名称",
+            "地市/部门",
+            "责任人",
+            "项目金额\n（万元）",
+            "投标主体",
+            "开标时间",
+            "公示期结束时间",
+            "中标通知书获得时间\n不填写视为开标当天或公示期结束第二天获得中标通知书",
+            "是否召开方案评审会",
+            "是否BPM方案解构",
+            "是否召开标前评审会",
+            "是否召开业财评审会",
+            "中标服务费打出时间",
+            "是否敲定合同内容\n收到中标通知书到合同敲定500万以下7个工作日，500万以上13个工作日",
+            "信产OA立项时间",
+            "合同发起时间\n地市项目合同审批单3个工作日",
+            "合同完成审批时间\n合同发起后 500万以下3个工作日，500万以上4个工作日",
+            "完成签约时间\n信产签约3个工作日，数智签约5个工作日",
+            "合同归档时间\n信产完成签约当日归档，数智1个工作日内归档",
+            "业务解构完成时间\n合同归档后1个工作日",
+            "合同解析完成时间\n前向合同解析2个工作日",
+            "省内ICT协议级立项完成时间\n合同解析完成后1个工作日",
+            "数智集团ICT协议级立项完成时间",
+        ]
+
         header_font = Font(bold=True)
         header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
 
@@ -353,28 +379,35 @@ class ExcelService:
             cell = ws.cell(row=1, column=col, value=header)
             cell.font = header_font
             cell.fill = header_fill
-            cell.alignment = Alignment(horizontal="center")
-            ws.column_dimensions[cell.column_letter].width = max(len(header) + 4, 15)
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            # 列宽取第一行文字长度
+            first_line = header.split("\n")[0]
+            ws.column_dimensions[cell.column_letter].width = max(len(first_line) + 4, 14)
 
-        # 示例行
-        sample = {
-            "项目名称": "示例项目",
-            "地市/部门": "西安",
-            "责任人": "张三",
-            "项目金额（万元）": 300,
-            "投标主体": "信产",
-            "开标时间": "2026-09-01",
-            "公示期结束时间": "2026-09-05",
-            "中标通知书获得时间": "2026-09-10",
-            "是否召开方案评审会": "是",
-            "是否BPM方案解构": "是",
-            "是否召开标前评审会": "否",
-            "是否召开业财评审会": "是",
-            "中标服务费打出时间": "",
-            "是否敲定合同内容": "否",
-        }
-        for col, header in enumerate(headers, 1):
-            ws.cell(row=2, column=col, value=sample.get(header, ""))
+        # 示例行（1条信产 + 1系数智）
+        samples = [
+            [
+                "示例项目A（信产）", "西安", "张三", 300, "信产",
+                "2026-09-01", "2026-09-05", "2026-09-10",
+                "是", "是", "否", "是", "2026-09-10",
+                "是", "", "2026-09-15", "2026-09-17",
+                "2026-09-20", "2026-09-20", "2026-09-21",
+                "2026-09-23", "2026-09-24", "不涉及",
+            ],
+            [
+                "示例项目B（数智）", "宝鸡", "李四", 800, "数智",
+                "2026-08-01", "2026-08-05", "2026-08-10",
+                "否", "否", "是", "是", "2026-08-10",
+                "是", "", "2026-08-20", "2026-08-24",
+                "", "", "", "", "", "",
+            ],
+        ]
+        for row_idx, sample in enumerate(samples, 2):
+            for col_idx, val in enumerate(sample, 1):
+                ws.cell(row=row_idx, column=col_idx, value=val)
+
+        # 表头行高
+        ws.row_dimensions[1].height = 60
 
         buf = io.BytesIO()
         wb.save(buf)
