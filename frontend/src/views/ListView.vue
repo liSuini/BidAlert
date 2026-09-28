@@ -35,9 +35,10 @@
           <StatusBadge :status="row.status" />
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="80" fixed="right">
+      <el-table-column label="操作" width="120" fixed="right">
         <template #default="{ row }">
           <el-button size="small" link @click="openDetail(row.id)">编辑</el-button>
+          <el-button size="small" link type="danger" @click="deleteProject(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -58,6 +59,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { projectApi } from '../api/projects'
 import { excelApi } from '../api/excel'
 import StatusBadge from '../components/StatusBadge.vue'
@@ -120,6 +122,21 @@ async function exportData() {
     URL.revokeObjectURL(url)
   } catch (e) {
     console.error('导出失败:', e)
+  }
+}
+
+async function deleteProject(row) {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除项目「${row.name}」吗？此操作不可恢复。`,
+      '删除确认',
+      { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
+    )
+    await projectApi.delete(row.id)
+    ElMessage.success('已删除')
+    loadData()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
   }
 }
 

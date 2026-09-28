@@ -65,12 +65,17 @@
         <el-button type="primary" size="small" @click="saveDates" style="margin-top: 12px;">保存时间节点</el-button>
       </div>
     </div>
+
+    <template #footer>
+      <el-button type="danger" @click="deleteProject">删除项目</el-button>
+      <el-button @click="$emit('close')">关闭</el-button>
+    </template>
   </el-dialog>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { projectApi } from '../api/projects'
 import StatusBadge from './StatusBadge.vue'
 
@@ -133,6 +138,22 @@ async function saveDates() {
     await loadDetail()
   } catch (e) {
     ElMessage.error('保存失败')
+  }
+}
+
+async function handleDelete() {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除项目「${detail.value.name}」吗？此操作不可恢复。`,
+      '删除确认',
+      { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
+    )
+    await projectApi.delete(props.projectId)
+    ElMessage.success('已删除')
+    emit('updated')
+    emit('close')
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
   }
 }
 
