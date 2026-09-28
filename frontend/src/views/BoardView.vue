@@ -61,7 +61,7 @@ function openDetail(id) {
 async function loadData() {
   loading.value = true
   try {
-    const res = await projectApi.list({ page: 1, size: 200 })
+    const res = await projectApi.list({ page: 1, size: 100 })
     projects.value = res.items
   } catch (e) {
     console.error('加载项目失败:', e)

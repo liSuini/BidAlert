@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/projects", tags=["项目"])
 @router.get("", response_model=PageResult)
 def list_projects(
     page: int = Query(1, ge=1),
-    size: int = Query(20, ge=1, le=100),
+    size: int = Query(20, ge=1, le=500),
     stage: str = Query(None),
     status: str = Query(None),
     region: str = Query(None),
