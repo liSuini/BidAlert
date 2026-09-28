@@ -34,7 +34,7 @@ class StageTimelineItem:
     end: Optional[str] = None
     days_used: int = 0
     limit: int = 0
-    status: str = "pending"  # normal/warning/overdue/completed/pending
+    status: str = "pending"  # normal/stage_warning/overdue/completed/pending
 
 
 @dataclass
@@ -44,8 +44,10 @@ class ProjectStatus:
     overdue_stage: Optional[str] = None
     days_in_stage: int = 0
     days_remaining: int = 0
+    stage_warning: bool = False  # 当前阶段达到80%阈值（仅前端颜色区分，不影响status）
     total_days_used: int = 0
     total_days_limit: int = 0
+    total_days_remaining: int = 0  # 总剩余天数
     current_stage: str = ""
     stage_timeline: List[StageTimelineItem] = field(default_factory=list)
 
@@ -157,7 +159,7 @@ def calculate(project, stage_configs: list) -> ProjectStatus:
             current_stage_idx = i  # 持续更新到最后一个
 
     has_overdue_stage = False
-    has_warning_stage = False
+    stage_warning_flag = False
     overdue_stage_name = None
     all_stages_completed = (current_stage_idx == -1)
     current_stage_name = ""
@@ -207,8 +209,8 @@ def calculate(project, stage_configs: list) -> ProjectStatus:
                 overdue_stage_name = config.stage_name
                 stage_status = "overdue"
             elif days_in_current >= limit * config.warning_threshold:
-                has_warning_stage = True
-                stage_status = "warning"
+                stage_warning_flag = True
+                stage_status = "stage_warning"
 
             timeline.append(StageTimelineItem(
                 stage=config.stage_name,
@@ -241,17 +243,27 @@ def calculate(project, stage_configs: list) -> ProjectStatus:
         total_days_used = working_days(bid_notice, today())
     total_overdue = total_days_used > total_limit
 
+    # ---- 总时长预警阈值 ----
+    # ≤500万：总时长剩余≤2工作日时预警
+    # >500万：总时长剩余≤3工作日时预警
+    total_days_remaining = total_limit - total_days_used
+    if total_limit <= TOTAL_LIMIT_BELOW_500:
+        warning_remaining = 2
+    else:
+        warning_remaining = 3
+
     # ---- 状态合成 ----
     # 规则：
     #   - 总时长超期 → OVERDUE（无论是否有阶段超期）
-    #   - 仅阶段超期但总时长未超 → NORMAL（剩余天数为负，前端红色区分）
-    #   - 阶段预警但未超期 → WARNING
+    #   - 总时长未超但剩余天数≤预警阈值 → WARNING
+    #   - 仅阶段超期/预警但总时长未超 → NORMAL（剩余天数前端颜色区分）
     if all_stages_completed:
         return ProjectStatus(
             status=Status.COMPLETED,
             current_stage="已完成",
             total_days_used=total_days_used,
             total_days_limit=total_limit,
+            total_days_remaining=total_days_remaining,
             stage_timeline=timeline,
         )
 
@@ -266,19 +278,23 @@ def calculate(project, stage_configs: list) -> ProjectStatus:
             overdue_stage=overdue_stage_name,
             days_in_stage=days_in_current,
             days_remaining=days_remaining_current,
+            stage_warning=stage_warning_flag,
             total_days_used=total_days_used,
             total_days_limit=total_limit,
+            total_days_remaining=total_days_remaining,
             current_stage=current_stage_name or "",
             stage_timeline=timeline,
         )
 
-    if has_warning_stage:
+    if total_days_remaining <= warning_remaining:
         return ProjectStatus(
             status=Status.WARNING,
             days_in_stage=days_in_current,
             days_remaining=days_remaining_current,
+            stage_warning=stage_warning_flag,
             total_days_used=total_days_used,
             total_days_limit=total_limit,
+            total_days_remaining=total_days_remaining,
             current_stage=current_stage_name,
             stage_timeline=timeline,
         )
@@ -287,8 +303,10 @@ def calculate(project, stage_configs: list) -> ProjectStatus:
         status=Status.NORMAL,
         days_in_stage=days_in_current,
         days_remaining=days_remaining_current,
+        stage_warning=stage_warning_flag,
         total_days_used=total_days_used,
         total_days_limit=total_limit,
+        total_days_remaining=total_days_remaining,
         current_stage=current_stage_name,
         stage_timeline=timeline,
     )

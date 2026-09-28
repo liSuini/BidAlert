@@ -93,8 +93,10 @@ class ProjectDTO(BaseModel):
     overdue_stage: Optional[str] = None
     days_in_stage: int = 0
     days_remaining: int = 0
+    stage_warning: bool = False
     total_days_used: int = 0
     total_days_limit: int = 0
+    total_days_remaining: int = 0
 
 
 class ProjectDetailDTO(ProjectDTO):

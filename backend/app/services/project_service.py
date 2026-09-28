@@ -42,8 +42,10 @@ class ProjectService:
             overdue_stage=status.overdue_stage,
             days_in_stage=status.days_in_stage,
             days_remaining=status.days_remaining,
+            stage_warning=status.stage_warning,
             total_days_used=status.total_days_used,
             total_days_limit=status.total_days_limit,
+            total_days_remaining=status.total_days_remaining,
         )
 
     def _to_detail_dto(self, project: Project) -> ProjectDetailDTO:
@@ -61,8 +63,10 @@ class ProjectService:
             overdue_stage=status.overdue_stage,
             days_in_stage=status.days_in_stage,
             days_remaining=status.days_remaining,
+            stage_warning=status.stage_warning,
             total_days_used=status.total_days_used,
             total_days_limit=status.total_days_limit,
+            total_days_remaining=status.total_days_remaining,
             bid_open_date=project.bid_open_date,
             publicity_end_date=project.publicity_end_date,
             bid_notice_date=project.bid_notice_date,

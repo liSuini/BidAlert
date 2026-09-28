@@ -30,7 +30,10 @@
       <el-table-column prop="days_in_stage" label="已用天数" width="90" sortable />
       <el-table-column prop="days_remaining" label="剩余天数" width="90" sortable>
         <template #default="{ row }">
-          <span :style="{ color: row.days_remaining < 0 ? 'var(--color-overdue)' : '' }">{{ row.days_remaining }}</span>
+          <span :style="{
+            color: row.days_remaining < 0 ? 'var(--color-overdue)' : (row.stage_warning ? '#e8932b' : ''),
+            fontWeight: row.days_remaining < 0 || row.stage_warning ? '600' : 'normal',
+          }">{{ row.days_remaining }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="total_days_used" label="总已用" width="80" sortable />
